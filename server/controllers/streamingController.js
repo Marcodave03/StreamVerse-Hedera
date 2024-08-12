@@ -1,4 +1,5 @@
 import { Server } from "socket.io";
+import { v4 as uuidv4 } from 'uuid';
 
 const rooms = {};
 
@@ -27,16 +28,14 @@ export const initializeSocketIO = (server) => {
         console.log(`User disconnected: ${socket.id}`);
         rooms[roomId] = rooms[roomId].filter((id) => id !== socket.id);
         socket.to(roomId).emit("user-disconnected", socket.id);
-
         if (rooms[roomId].length === 0) {
           delete rooms[roomId];
         }
       });
-    });
 
-    socket.on("screen-data", (data) => {
-      const { roomId, track } = data;
-      socket.to(roomId).emit("receive-screen", track);
+      socket.on("signal", (data) => {
+        socket.to(roomId).emit("signal", data);
+      });
     });
   });
 
@@ -48,13 +47,15 @@ export const getRooms = (req, res) => {
 };
 
 export const createRoom = (req, res) => {
-  const { roomId } = req.body;
-  if (!roomId) {
-    return res.status(400).json({ error: "Room ID is required" });
-  }
-  if (rooms[roomId]) {
-    return res.status(400).json({ error: "Room already exists" });
-  }
+  const roomId = uuidv4(); 
   rooms[roomId] = [];
-  res.status(201).json({ message: `Room ${roomId} created` });
+  res.status(201).json({ message: `Room ${roomId} created`, roomId });
+};
+
+export const joinRoom = (req, res) => {
+  const { roomId } = req.body;
+  if (!rooms[roomId]) {
+    return res.status(404).json({ error: "Room not found" });
+  }
+  res.status(200).json({ message: `Joined room ${roomId}`, roomId });
 };
