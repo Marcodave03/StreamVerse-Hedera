@@ -1,9 +1,9 @@
 import { Server } from "socket.io";
-import { v4 as uuidv4 } from 'uuid';
-import SimplePeer from 'simple-peer';
+import { v4 as uuidv4 } from "uuid";
 
 const rooms = {};
 
+// Initialize Socket.io and handle events
 export const initializeSocketIO = (server) => {
   const io = new Server(server, {
     cors: {
@@ -24,6 +24,11 @@ export const initializeSocketIO = (server) => {
         rooms[roomId].streamers.push(socket.id);
       } else if (role === "watcher") {
         rooms[roomId].watchers.push(socket.id);
+
+        // Send streamers' IDs to the new watcher
+        rooms[roomId].streamers.forEach((streamerId) => {
+          socket.emit("user-connected", { id: streamerId, role: "streamer" });
+        });
       }
 
       socket.join(roomId);
@@ -33,16 +38,23 @@ export const initializeSocketIO = (server) => {
 
       socket.on("disconnect", () => {
         console.log(`User disconnected: ${socket.id}`);
-        
+
         if (rooms[roomId].streamers.includes(socket.id)) {
-          rooms[roomId].streamers = rooms[roomId].streamers.filter((id) => id !== socket.id);
+          rooms[roomId].streamers = rooms[roomId].streamers.filter(
+            (id) => id !== socket.id
+          );
         } else if (rooms[roomId].watchers.includes(socket.id)) {
-          rooms[roomId].watchers = rooms[roomId].watchers.filter((id) => id !== socket.id);
+          rooms[roomId].watchers = rooms[roomId].watchers.filter(
+            (id) => id !== socket.id
+          );
         }
 
         socket.to(roomId).emit("user-disconnected", { id: socket.id, role });
 
-        if (rooms[roomId].streamers.length === 0 && rooms[roomId].watchers.length === 0) {
+        if (
+          rooms[roomId].streamers.length === 0 &&
+          rooms[roomId].watchers.length === 0
+        ) {
           delete rooms[roomId];
         }
       });
@@ -54,7 +66,9 @@ export const initializeSocketIO = (server) => {
 
     socket.on("stop-stream", (roomId) => {
       if (rooms[roomId]) {
-        rooms[roomId].streamers = rooms[roomId].streamers.filter((id) => id !== socket.id);
+        rooms[roomId].streamers = rooms[roomId].streamers.filter(
+          (id) => id !== socket.id
+        );
         socket.to(roomId).emit("stream-stopped", socket.id);
       }
     });
@@ -63,12 +77,14 @@ export const initializeSocketIO = (server) => {
   return io;
 };
 
+// Express route handlers
+
 export const getRooms = (req, res) => {
   res.json(Object.keys(rooms));
 };
 
 export const createRoom = (req, res) => {
-  const roomId = uuidv4(); 
+  const roomId = uuidv4();
   rooms[roomId] = { streamers: [], watchers: [] };
   res.status(201).json({ message: `Room ${roomId} created`, roomId });
 };

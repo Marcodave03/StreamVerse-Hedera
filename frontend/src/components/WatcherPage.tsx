@@ -13,12 +13,12 @@ const WatcherPage: React.FC = () => {
 
     socket.emit('join-room', roomId, 'watcher');
 
-    socket.on('user-connected', ({ id }) => {
+    const handleUserConnected = ({ id }: { id: string }) => {
       const peer = createPeer(id);
       setPeers((prevPeers) => [...prevPeers, peer]);
-    });
+    };
 
-    socket.on('signal', (data: { id: string; signal: Peer.SignalData }) => {
+    const handleSignal = (data: { id: string; signal: Peer.SignalData }) => {
       const peer = peers.find((p) => (p as any).peerId === data.id);
       if (peer) {
         peer.signal(data.signal);
@@ -26,16 +26,20 @@ const WatcherPage: React.FC = () => {
         const newPeer = addPeer(data.signal, data.id);
         setPeers((prevPeers) => [...prevPeers, newPeer]);
       }
-    });
+    };
 
-    socket.on('user-disconnected', ({ id }) => {
+    const handleUserDisconnected = ({ id }: { id: string }) => {
       setPeers((prevPeers) => prevPeers.filter((p) => (p as any).peerId !== id));
-    });
+    };
+
+    socket.on('user-connected', handleUserConnected);
+    socket.on('signal', handleSignal);
+    socket.on('user-disconnected', handleUserDisconnected);
 
     return () => {
-      socket.off('user-connected');
-      socket.off('signal');
-      socket.off('user-disconnected');
+      socket.off('user-connected', handleUserConnected);
+      socket.off('signal', handleSignal);
+      socket.off('user-disconnected', handleUserDisconnected);
     };
   }, [roomId, peers]);
 
@@ -80,12 +84,7 @@ const WatcherPage: React.FC = () => {
   return (
     <div>
       <h2>Watching Room: {roomId}</h2>
-      <video
-        ref={remoteVideoRef}
-        autoPlay
-        muted={false}
-        style={{ width: '800px', height: '450px' }}
-      />
+      <video ref={remoteVideoRef} autoPlay muted={false} style={{ width: '800px', height: '450px' }} />
     </div>
   );
 };

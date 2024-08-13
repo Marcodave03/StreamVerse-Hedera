@@ -5,6 +5,6 @@ const router = express.Router();
 
 router.get('/rooms', getRooms);
 router.post('/rooms', createRoom);
-router.post('/join-room', joinRoom);  // Add this route to handle joining a room by ID
+router.post('/join-room', joinRoom);
 
 export default router;

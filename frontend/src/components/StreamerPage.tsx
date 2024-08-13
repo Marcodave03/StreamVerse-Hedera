@@ -12,15 +12,24 @@ const StreamerPage: React.FC = () => {
 
     socket.emit('join-room', roomId, 'streamer');
 
-    navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
-      .then((newStream) => {
+    const startStream = async () => {
+      try {
+        const newStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
         setStream(newStream);
         if (videoRef.current) {
           videoRef.current.srcObject = newStream;
         }
-        socket.emit('video-data', newStream);
-      })
-      .catch((error) => console.error("Error accessing screen media.", error));
+        // Emit the stream to watchers
+        newStream.getTracks().forEach(track => {
+          socket.emit('stream-track', { roomId, track });
+        });
+      } catch (error) {
+        console.error("Error accessing screen media:", error);
+        alert("Could not start the stream. Please check your permissions.");
+      }
+    };
+
+    startStream();
 
     return () => {
       if (stream) {
@@ -33,12 +42,7 @@ const StreamerPage: React.FC = () => {
   return (
     <div>
       <h2>Streaming in Room: {roomId}</h2>
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        style={{ width: '800px', height: '450px' }}
-      />
+      <video ref={videoRef} autoPlay muted style={{ width: '800px', height: '450px' }} />
     </div>
   );
 };

@@ -31,7 +31,11 @@ const RoomList: React.FC = () => {
   };
 
   const joinRoom = () => {
-    navigate(`/room/${roomId}?role=watcher`);
+    if (roomId) {
+      navigate(`/room/${roomId}?role=${role}`);
+    } else {
+      alert("Please enter a valid room ID.");
+    }
   };
 
   return (
@@ -50,7 +54,26 @@ const RoomList: React.FC = () => {
           value={roomId}
           onChange={(e) => setRoomId(e.target.value)}
         />
+        <div>
+          <h2>Select Role</h2>
+          <select value={role} onChange={(e) => setRole(e.target.value as 'streamer' | 'watcher')}>
+            <option value="streamer">Streamer</option>
+            <option value="watcher">Watcher</option>
+          </select>
+        </div>
         <button onClick={joinRoom}>Join Room</button>
+      </div>
+
+      <div>
+        <h2>Available Rooms</h2>
+        <ul>
+          {rooms.map((room) => (
+            <li key={room}>
+              {room}
+              <button onClick={() => navigate(`/room/${room}?role=watcher`)}>Join</button>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
