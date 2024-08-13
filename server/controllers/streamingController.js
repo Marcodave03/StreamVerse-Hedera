@@ -5,13 +5,33 @@ const rooms = {};
 
 const handleJoinRoom = (socket) => (roomId, role) => {
   if (!rooms[roomId]) {
-    rooms[roomId] = { streamers: [], watchers: [] };
+    rooms[roomId] = {
+      streamers: [],
+      watchers: [],
+      currentOffer: null,
+      iceCandidates: [],
+    };
   }
 
   if (role === "streamer") {
     rooms[roomId].streamers.push(socket.id);
   } else if (role === "watcher") {
     rooms[roomId].watchers.push(socket.id);
+    if (rooms[roomId].currentOffer) {
+      console.log(`Sending offer to watcher: ${socket.id}`);
+      socket.emit("offer", rooms[roomId].currentOffer);
+    } else {
+      console.log(`No current offer`);
+    }
+
+    if (rooms[roomId].iceCandidates.length > 0) {
+      console.log(
+        `Sending ${rooms[roomId].iceCandidates.length} ICE candidates to watcher: ${socket.id}`
+      );
+      rooms[roomId].iceCandidates.forEach((candidate) => {
+        socket.emit("ice-candidate", candidate);
+      });
+    }
   }
 
   socket.join(roomId);
@@ -20,12 +40,19 @@ const handleJoinRoom = (socket) => (roomId, role) => {
   socket.to(roomId).emit("user-connected", { id: socket.id, role });
 };
 
-const handleSignal = (socket) => (data) => {
-  const { signalData, targetId } = data;
-  socket.to(targetId).emit("signal", {
-    signalData,
-    from: socket.id,
-  });
+const handleOffer = (socket) => (roomId, offer) => {
+  if (rooms[roomId]) {
+    rooms[roomId].currentOffer = offer;
+  }
+  socket.to(roomId).emit("offer", offer);
+};
+
+const handleIceCandidate = (socket) => (roomId, candidate) => {
+  if (!rooms[roomId].iceCandidates) {
+    rooms[roomId].iceCandidates = [];
+  }
+  rooms[roomId].iceCandidates.push(candidate);
+  socket.to(roomId).emit("ice-candidate", candidate);
 };
 
 const handleDisconnect = (socket) => (role, roomId) => {
@@ -35,6 +62,11 @@ const handleDisconnect = (socket) => (role, roomId) => {
     rooms[roomId].streamers = rooms[roomId].streamers.filter(
       (id) => id !== socket.id
     );
+    // Clear the offer and ice candidates when the last streamer disconnects
+    if (rooms[roomId].streamers.length === 0) {
+      rooms[roomId].currentOffer = null;
+      rooms[roomId].iceCandidates = [];
+    }
   } else if (role === "watcher") {
     rooms[roomId].watchers = rooms[roomId].watchers.filter(
       (id) => id !== socket.id
@@ -57,6 +89,8 @@ const handleStopStream = (socket) => (roomId) => {
     rooms[roomId].streamers = rooms[roomId].streamers.filter(
       (id) => id !== socket.id
     );
+    rooms[roomId].currentOffer = null; // Clear the current offer when streaming stops
+    rooms[roomId].iceCandidates = []; // Clear ICE candidates
     socket.to(roomId).emit("stream-stopped", socket.id);
   }
 };
@@ -75,16 +109,13 @@ export const initializeSocketIO = (server) => {
     console.log(`User connected: ${socket.id}`);
 
     socket.on("join-room", handleJoinRoom(socket));
-    socket.on("signal", handleSignal(socket));
-    socket.on("offer", (roomId, offer) => {
-      socket.to(roomId).emit("offer", offer);
-    });
+    socket.on("offer", (roomId, offer) => handleOffer(socket)(roomId, offer));
     socket.on("answer", (roomId, answer) => {
       socket.to(roomId).emit("answer", answer);
     });
-    socket.on("ice-candidate", (roomId, candidate) => {
-      socket.to(roomId).emit("ice-candidate", candidate);
-    });
+    socket.on("ice-candidate", (roomId, candidate) =>
+      handleIceCandidate(socket)(roomId, candidate)
+    );
     socket.on("disconnect", () =>
       handleDisconnect(socket, socket.role, socket.roomId)
     );
@@ -100,7 +131,12 @@ export const getRooms = (req, res) => {
 
 export const createRoom = (req, res) => {
   const roomId = uuidv4();
-  rooms[roomId] = { streamers: [], watchers: [] };
+  rooms[roomId] = {
+    streamers: [],
+    watchers: [],
+    currentOffer: null,
+    iceCandidates: [],
+  };
   res.status(201).json({ message: `Room ${roomId} created`, roomId });
 };
 
