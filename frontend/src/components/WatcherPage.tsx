@@ -1,90 +1,76 @@
-import React, { useEffect, useRef, useState } from 'react';
-import Peer from 'simple-peer';
-import socket from '../socket';
-import { useParams } from 'react-router-dom';
+import React, { useEffect, useRef } from "react";
+import { useParams } from "react-router-dom";
+import socket from "../socket";
 
 const WatcherPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
-  const [peers, setPeers] = useState<Peer.Instance[]>([]);
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
-    if (!roomId) return;
-
-    socket.emit('join-room', roomId, 'watcher');
-
-    socket.on('user-connected', ({ id }) => {
-      const peer = createPeer(id);
-      setPeers((prevPeers) => [...prevPeers, peer]);
+    const peerConnection = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     });
+    peerConnectionRef.current = peerConnection;
 
-    socket.on('signal', (data: { id: string; signal: Peer.SignalData }) => {
-      const peer = peers.find((p) => (p as any).peerId === data.id);
-      if (peer) {
-        peer.signal(data.signal);
-      } else {
-        const newPeer = addPeer(data.signal, data.id);
-        setPeers((prevPeers) => [...prevPeers, newPeer]);
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit("ice-candidate", roomId, event.candidate);
+      }
+    };
+
+    peerConnection.ontrack = (event) => {
+      if (videoRef.current) {
+        videoRef.current.srcObject = event.streams[0];
+      }
+    };
+
+    socket.emit("join-room", roomId, "watcher");
+
+    socket.on("offer", async (offer) => {
+      try {
+        if (peerConnectionRef.current) {
+          await peerConnectionRef.current.setRemoteDescription(
+            new RTCSessionDescription(offer)
+          );
+          const answer = await peerConnectionRef.current.createAnswer();
+          await peerConnectionRef.current.setLocalDescription(answer);
+          socket.emit("answer", roomId, answer);
+        }
+      } catch (error) {
+        console.error("Error handling offer:", error);
       }
     });
 
-    socket.on('user-disconnected', ({ id }) => {
-      setPeers((prevPeers) => prevPeers.filter((p) => (p as any).peerId !== id));
+    socket.on("ice-candidate", async (candidate) => {
+      try {
+        if (
+          peerConnectionRef.current &&
+          peerConnectionRef.current.signalingState !== "closed"
+        ) {
+          await peerConnectionRef.current.addIceCandidate(
+            new RTCIceCandidate(candidate)
+          );
+        }
+      } catch (error) {
+        console.error("Error adding received ICE candidate:", error);
+      }
     });
 
     return () => {
-      socket.off('user-connected');
-      socket.off('signal');
-      socket.off('user-disconnected');
+      peerConnection.close();
+      peerConnectionRef.current = null;
     };
-  }, [roomId, peers]);
-
-  const createPeer = (userToSignal: string): Peer.Instance => {
-    const peer = new Peer({
-      initiator: true,
-      trickle: false,
-    });
-
-    (peer as any).peerId = userToSignal;
-    peer.on('signal', (signal: Peer.SignalData) => {
-      socket.emit('signal', { signal, target: userToSignal });
-    });
-
-    peer.on('stream', (stream: MediaStream) => {
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = stream;
-      }
-    });
-
-    return peer;
-  };
-
-  const addPeer = (incomingSignal: Peer.SignalData, callerId: string): Peer.Instance => {
-    const peer = new Peer({
-      initiator: false,
-      trickle: false,
-    });
-
-    (peer as any).peerId = callerId;
-    peer.signal(incomingSignal);
-
-    peer.on('stream', (stream: MediaStream) => {
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = stream;
-      }
-    });
-
-    return peer;
-  };
+  }, [roomId]);
 
   return (
     <div>
       <h2>Watching Room: {roomId}</h2>
       <video
-        ref={remoteVideoRef}
+        ref={videoRef}
         autoPlay
-        muted={false}
-        style={{ width: '800px', height: '450px' }}
+        controls
+        style={{ width: "800px", height: "450px" }}
       />
     </div>
   );
