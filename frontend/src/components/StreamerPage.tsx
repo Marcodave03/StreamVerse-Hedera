@@ -8,11 +8,8 @@ const StreamerPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const [viewerCount, setViewerCount] = useState(0);
-  const [messages, setMessages] = useState<string[]>([
-    "Test",
-    "Kontol",
-    "Anjing",
-  ]);
+  const [messages, setMessages] = useState<string[]>([]);
+  const [message, setMessage] = useState<string>("");
 
   useEffect(() => {
     const peerConnection = new RTCPeerConnection({
@@ -70,6 +67,10 @@ const StreamerPage: React.FC = () => {
       setViewerCount((prev) => prev - 1);
     });
 
+    socket.on("receive-chat", (message) => {
+      setMessages((prev) => [...prev, message]);
+    });
+
     return () => {
       peerConnection.close();
       peerConnectionRef.current = null;
@@ -82,6 +83,14 @@ const StreamerPage: React.FC = () => {
     };
   }, [roomId]);
 
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (message.trim() === "") return;
+    setMessages((prev) => [...prev, message]);
+    console.log("Sending message:", message);
+    socket.emit("chat", roomId, message);
+    setMessage("");
+  };
   const startStream = async () => {
     if (!roomId) return;
 
@@ -154,17 +163,22 @@ const StreamerPage: React.FC = () => {
               overflowY: "auto",
               paddingBlock: "8px",
               minWidth: "400px",
+              height: "auto",
             }}
           >
             {messages.map((message, index) => (
               <div key={index}>{message}</div>
             ))}
           </div>
-          <input
-            style={{ paddingBlock: "6px", paddingInline: "4px" }}
-            type="text"
-            placeholder="Enter a message"
-          />
+          <form onSubmit={onSubmit}>
+            <input
+              style={{ paddingBlock: "6px", paddingInline: "4px" }}
+              type="text"
+              placeholder="Enter a message"
+              onChange={(e) => setMessage(e.target.value)}
+              value={message}
+            />
+          </form>
         </div>
       </div>
     </div>

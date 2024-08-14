@@ -7,12 +7,9 @@ const WatcherPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const [viewerCount, setViewerCount] = useState(0);
-  const [messages, setMessages] = useState<string[]>([
-    "Test",
-    "Kontol",
-    "Anjing",
-  ]);
+  const [messages, setMessages] = useState<string[]>([]);
   const [message, setMessage] = useState<string>("");
+
   useEffect(() => {
     const peerConnection = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
@@ -71,34 +68,30 @@ const WatcherPage: React.FC = () => {
       }
     });
     socket.on("receive-chat", (message) => {
-      console.log(`Received message: ${message}`);
       setMessages((prev) => [...prev, message]);
     });
-    
+
     return () => {
       peerConnection.close();
       peerConnectionRef.current = null;
-      socket.off("chat");
       socket.off("user-connected");
       socket.off("user-disconnected");
       socket.off("offer");
       socket.off("ice-candidate");
-      socket.off("receive-chat");
+      socket.off("receive-chat"); 
       socket.emit("leave-room", roomId);
     };
   }, [roomId]);
 
-
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (message.trim() === "") return; 
+    setMessages((prev) => [...prev, message]);
     console.log("Sending message:", message);
     socket.emit("chat", roomId, message);
+    
     setMessage("");
   };
-
-  useEffect(() => {
-    console.log(messages);
-  }, [messages]);
 
   return (
     <div>
