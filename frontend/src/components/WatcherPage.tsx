@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import socket from "../socket";
 
@@ -6,7 +6,13 @@ const WatcherPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-
+  const [viewerCount, setViewerCount] = useState(0);
+  const [messages, setMessages] = useState<string[]>([
+    "Test",
+    "Kontol",
+    "Anjing",
+  ]);
+  const [message, setMessage] = useState<string>("");
   useEffect(() => {
     const peerConnection = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
@@ -42,6 +48,14 @@ const WatcherPage: React.FC = () => {
       }
     });
 
+    socket.on("user-connected", () => {
+      setViewerCount((prev) => prev + 1);
+    });
+
+    socket.on("user-disconnected", () => {
+      setViewerCount((prev) => prev - 1);
+    });
+
     socket.on("ice-candidate", async (candidate) => {
       try {
         if (
@@ -56,22 +70,86 @@ const WatcherPage: React.FC = () => {
         console.error("Error adding received ICE candidate:", error);
       }
     });
-
+    socket.on("receive-chat", (message) => {
+      console.log(`Received message: ${message}`);
+      setMessages((prev) => [...prev, message]);
+    });
+    
     return () => {
       peerConnection.close();
       peerConnectionRef.current = null;
+      socket.off("chat");
+      socket.off("user-connected");
+      socket.off("user-disconnected");
+      socket.off("offer");
+      socket.off("ice-candidate");
+      socket.off("receive-chat");
+      socket.emit("leave-room", roomId);
     };
   }, [roomId]);
+
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    console.log("Sending message:", message);
+    socket.emit("chat", roomId, message);
+    setMessage("");
+  };
+
+  useEffect(() => {
+    console.log(messages);
+  }, [messages]);
 
   return (
     <div>
       <h2>Watching Room: {roomId}</h2>
-      <video
-        ref={videoRef}
-        autoPlay
-        controls
-        style={{ width: "800px", height: "450px" }}
-      />
+      <p>Viewers: {viewerCount}</p>
+      <div style={{ display: "flex", gap: "2rem", alignItems: "end" }}>
+        <video
+          ref={videoRef}
+          autoPlay
+          controls
+          style={{ width: "800px", height: "450px" }}
+        />
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "1rem",
+            maxWidth: "50%",
+            marginBlock: "1rem",
+          }}
+        >
+          <h3>Messages</h3>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.5rem",
+              padding: "0.5rem",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              maxHeight: "200px",
+              overflowY: "auto",
+              paddingBlock: "8px",
+              minWidth: "400px",
+            }}
+          >
+            {messages.map((message, index) => (
+              <div key={index}>{message}</div>
+            ))}
+          </div>
+          <form onSubmit={onSubmit}>
+            <input
+              style={{ paddingBlock: "6px", paddingInline: "4px" }}
+              type="text"
+              placeholder="Enter a message"
+              onChange={(e) => setMessage(e.target.value)}
+              value={message}
+            />
+          </form>
+        </div>
+      </div>
     </div>
   );
 };

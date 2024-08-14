@@ -1,33 +1,36 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import socket from '../socket';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import socket from "../socket";
 
 const RoomList: React.FC = () => {
   const [rooms, setRooms] = useState<string[]>([]);
-  const [roomId, setRoomId] = useState<string>('');
-  const [role, setRole] = useState<'streamer' | 'watcher'>('streamer');
+  const [roomId, setRoomId] = useState<string>("");
+  const [role, setRole] = useState<"streamer" | "watcher">("streamer");
   const navigate = useNavigate();
+  const [createRoomLoading, setCreateRoomLoading] = useState(false);
 
   useEffect(() => {
     fetch("http://localhost:5080/rooms")
-      .then(response => response.json())
-      .then(data => setRooms(data))
-      .catch(error => console.error("Error fetching rooms:", error));
+      .then((response) => response.json())
+      .then((data) => setRooms(data))
+      .catch((error) => console.error("Error fetching rooms:", error));
   }, []);
 
   const createRoom = () => {
+    setCreateRoomLoading(true);
     fetch("http://localhost:5080/rooms", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
-      }
+        "Content-Type": "application/json",
+      },
     })
-    .then(response => response.json())
-    .then(data => {
-      const newRoomId = data.roomId;
-      navigate(`/stream/${newRoomId}`);
-    })
-    .catch(error => console.error("Error creating room:", error));
+      .then((response) => response.json())
+      .then((data) => {
+        const newRoomId = data.roomId;
+        setCreateRoomLoading(false);
+        navigate(`/stream/${newRoomId}`);
+      })
+      .catch((error) => console.error("Error creating room:", error));
   };
 
   const joinRoom = () => {
@@ -39,7 +42,9 @@ const RoomList: React.FC = () => {
       <h1>Room List</h1>
       <div>
         <h2>Create a Room</h2>
-        <button onClick={createRoom}>Start Streaming</button>
+        <button disabled={createRoomLoading} onClick={createRoom}>
+          Start Streaming
+        </button>
       </div>
 
       <div>

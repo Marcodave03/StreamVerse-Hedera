@@ -1,7 +1,20 @@
 import { Server } from "socket.io";
 import { v4 as uuidv4 } from "uuid";
+import {
+  Client,
+  TopicId,
+  TopicMessageSubmitTransaction,
+  TopicCreateTransaction,
+  TopicMessageQuery,
+} from "@hashgraph/sdk";
+import dotenv from "dotenv";
 
 const rooms = {};
+const client = Client.forTestnet();
+client.setOperator(
+  process.env.HEDERA_ACCOUNT_ID,
+  process.env.HEDERA_PRIVATE_KEY
+);
 
 const handleJoinRoom = (socket) => (roomId, role) => {
   if (!rooms[roomId]) {
@@ -18,12 +31,8 @@ const handleJoinRoom = (socket) => (roomId, role) => {
   } else if (role === "watcher") {
     rooms[roomId].watchers.push(socket.id);
     if (rooms[roomId].currentOffer) {
-      console.log(`Sending offer to watcher: ${socket.id}`);
       socket.emit("offer", rooms[roomId].currentOffer);
-    } else {
-      console.log(`No current offer`);
     }
-
     if (rooms[roomId].iceCandidates.length > 0) {
       console.log(
         `Sending ${rooms[roomId].iceCandidates.length} ICE candidates to watcher: ${socket.id}`
@@ -37,9 +46,10 @@ const handleJoinRoom = (socket) => (roomId, role) => {
   socket.join(roomId);
   console.log(`User ${socket.id} joined room: ${roomId} as ${role}`);
 
-  socket.to(roomId).emit("user-connected", { id: socket.id, role });
+  socket
+    .to(roomId)
+    .emit("user-connected", { id: socket.id, role, roomid: roomId });
 };
-
 const handleOffer = (socket) => (roomId, offer) => {
   if (rooms[roomId]) {
     rooms[roomId].currentOffer = offer;
@@ -62,7 +72,6 @@ const handleDisconnect = (socket) => (role, roomId) => {
     rooms[roomId].streamers = rooms[roomId].streamers.filter(
       (id) => id !== socket.id
     );
-    // Clear the offer and ice candidates when the last streamer disconnects
     if (rooms[roomId].streamers.length === 0) {
       rooms[roomId].currentOffer = null;
       rooms[roomId].iceCandidates = [];
@@ -89,8 +98,8 @@ const handleStopStream = (socket) => (roomId) => {
     rooms[roomId].streamers = rooms[roomId].streamers.filter(
       (id) => id !== socket.id
     );
-    rooms[roomId].currentOffer = null; // Clear the current offer when streaming stops
-    rooms[roomId].iceCandidates = []; // Clear ICE candidates
+    rooms[roomId].currentOffer = null;
+    rooms[roomId].iceCandidates = [];
     socket.to(roomId).emit("stream-stopped", socket.id);
   }
 };
@@ -106,12 +115,14 @@ export const initializeSocketIO = (server) => {
   });
 
   io.on("connection", (socket) => {
-    console.log(`User connected: ${socket.id}`);
-
     socket.on("join-room", handleJoinRoom(socket));
     socket.on("offer", (roomId, offer) => handleOffer(socket)(roomId, offer));
     socket.on("answer", (roomId, answer) => {
       socket.to(roomId).emit("answer", answer);
+    });
+    socket.on("chat", (roomId, message) => {
+      console.log(`Received chat message: ${message} from ${roomId}`);
+      socket.to(roomId).emit("receive-chat", message);
     });
     socket.on("ice-candidate", (roomId, candidate) =>
       handleIceCandidate(socket)(roomId, candidate)
@@ -129,15 +140,19 @@ export const getRooms = (req, res) => {
   res.json(Object.keys(rooms));
 };
 
-export const createRoom = (req, res) => {
-  const roomId = uuidv4();
-  rooms[roomId] = {
+export const createRoom = async (req, res) => {
+  const transaction = await new TopicCreateTransaction()
+    .setTopicMemo("Live Streaming Room")
+    .execute(client);
+  const receipt = await transaction.getReceipt(client);
+  const topicId = receipt.topicId.toString();
+  rooms[topicId] = {
     streamers: [],
     watchers: [],
     currentOffer: null,
     iceCandidates: [],
   };
-  res.status(201).json({ message: `Room ${roomId} created`, roomId });
+  res.status(201).json({ message: `Room ${topicId} created`, roomId: topicId });
 };
 
 export const joinRoom = (req, res) => {

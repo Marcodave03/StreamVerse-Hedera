@@ -7,6 +7,12 @@ const StreamerPage: React.FC = () => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const [viewerCount, setViewerCount] = useState(0);
+  const [messages, setMessages] = useState<string[]>([
+    "Test",
+    "Kontol",
+    "Anjing",
+  ]);
 
   useEffect(() => {
     const peerConnection = new RTCPeerConnection({
@@ -56,12 +62,23 @@ const StreamerPage: React.FC = () => {
       if (role === "watcher") {
         peerConnection.onnegotiationneeded?.(new Event("negotiationneeded"));
       }
+      setViewerCount((prev) => prev + 1);
+    });
+
+    socket.on("user-disconnected", ({ id, role }) => {
+      console.log(`User disconnected: ${id} as ${role}`);
+      setViewerCount((prev) => prev - 1);
     });
 
     return () => {
       peerConnection.close();
       peerConnectionRef.current = null;
       socket.emit("stop-stream", roomId);
+      socket.off("offer");
+      socket.off("user-connected");
+      socket.off("user-disconnected");
+      socket.off("ice-candidate");
+      socket.off("chat");
     };
   }, [roomId]);
 
@@ -99,13 +116,57 @@ const StreamerPage: React.FC = () => {
   return (
     <div>
       <h2>Streaming in Room: {roomId}</h2>
-      <button onClick={startStream}>Start Streaming</button>
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        style={{ width: "800px", height: "450px" }}
-      />
+      <p>Viewers: {viewerCount}</p>
+      <div style={{ display: "flex", gap: "2rem", alignItems: "end" }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            style={{ width: "800px", height: "450px" }}
+          />
+          <button
+            style={{ maxWidth: "150px", paddingBlock: "8px" }}
+            onClick={startStream}
+          >
+            Start Streaming
+          </button>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "1rem",
+            maxWidth: "50%",
+            marginBlock: "1rem",
+          }}
+        >
+          <h3>Messages</h3>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.5rem",
+              padding: "0.5rem",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              maxHeight: "200px",
+              overflowY: "auto",
+              paddingBlock: "8px",
+              minWidth: "400px",
+            }}
+          >
+            {messages.map((message, index) => (
+              <div key={index}>{message}</div>
+            ))}
+          </div>
+          <input
+            style={{ paddingBlock: "6px", paddingInline: "4px" }}
+            type="text"
+            placeholder="Enter a message"
+          />
+        </div>
+      </div>
     </div>
   );
 };
