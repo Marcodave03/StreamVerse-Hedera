@@ -67,7 +67,7 @@ const StreamerPage: React.FC = () => {
       setViewerCount((prev) => prev - 1);
     });
 
-    socket.on("receive-chat", (message) => {
+    socket.on("chat", (message) => {
       setMessages((prev) => [...prev, message]);
     });
 

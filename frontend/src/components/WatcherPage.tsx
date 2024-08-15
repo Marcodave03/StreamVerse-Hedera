@@ -67,7 +67,7 @@ const WatcherPage: React.FC = () => {
         console.error("Error adding received ICE candidate:", error);
       }
     });
-    socket.on("receive-chat", (message) => {
+    socket.on("chat", (message) => {
       setMessages((prev) => [...prev, message]);
     });
 
@@ -78,18 +78,16 @@ const WatcherPage: React.FC = () => {
       socket.off("user-disconnected");
       socket.off("offer");
       socket.off("ice-candidate");
-      socket.off("receive-chat"); 
+      socket.off("receive-chat");
       socket.emit("leave-room", roomId);
     };
   }, [roomId]);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (message.trim() === "") return; 
+    if (message.trim() === "") return;
     setMessages((prev) => [...prev, message]);
-    console.log("Sending message:", message);
     socket.emit("chat", roomId, message);
-    
     setMessage("");
   };
 

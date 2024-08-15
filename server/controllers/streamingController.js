@@ -104,6 +104,17 @@ const handleStopStream = (socket) => (roomId) => {
   }
 };
 
+const sendMessage = (message, roomId) => {
+  try {
+    new TopicMessageSubmitTransaction()
+      .setTopicId(roomId)
+      .setMessage(message)
+      .execute(client);
+  } catch (error) {
+    console.error(error);
+  }
+};
+
 export const initializeSocketIO = (server) => {
   const io = new Server(server, {
     cors: {
@@ -122,7 +133,8 @@ export const initializeSocketIO = (server) => {
     });
     socket.on("chat", (roomId, message) => {
       console.log(`Received chat message: ${message} from ${roomId}`);
-      socket.to(roomId).emit("receive-chat", message);
+      sendMessage(message, roomId);
+      socket.to(roomId).emit("chat", message);
     });
     socket.on("ice-candidate", (roomId, candidate) =>
       handleIceCandidate(socket)(roomId, candidate)
