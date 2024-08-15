@@ -7,6 +7,7 @@ import {
   Client,
   AccountCreateTransaction,
   Hbar,
+  AccountBalanceQuery,
 } from "@hashgraph/sdk";
 import dotenv from "dotenv";
 
@@ -89,6 +90,54 @@ router.get("/balance", async (req, res) => {
     res.status(200).json({ balance: accountBalance.hbars.toTinybars() });
   } catch (error) {
     console.error("Error fetching balance:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/account", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ message: "Authorization header missing" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findByPk(decoded.id, {
+      attributes: ["username", "hederaAccountId"],
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      username: user.username,
+      hederaAccountId: user.hederaAccountId,
+    });
+  } catch (error) {
+    console.error("Error fetching account info:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/logout", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ message: "Authorization header missing" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    await BlacklistedToken.create({ token });
+
+    res.status(200).json({ message: "Logout successful" });
+  } catch (error) {
+    console.error("Logout error:", error);
     res.status(500).json({ error: error.message });
   }
 });

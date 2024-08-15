@@ -4,32 +4,55 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { Client, PrivateKey, TransferTransaction, Hbar } from "@hashgraph/sdk";
 import sequelize from "./models/index.js";
+import authRoute from "./routes/auth.js";
+import User from "./models/user.js"; // Assuming you have a User model to fetch user details
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT;
 
-app.use(cors());
+app.use(cors({ origin: "http://localhost:3000" }));
 app.use(bodyParser.json());
 
-// Initialize the database connection
-sequelize.sync();
+sequelize
+  .sync()
+  .then(() => {
+    console.log("Database synchronized successfully.");
+  })
+  .catch((error) => {
+    console.error("Error synchronizing database:", error);
+  });
 
-// Hedera client setup
-const client = Client.forTestnet(); // or Client.forMainnet() for production
-client.setOperator(
-  process.env.HEDERA_ACCOUNT_ID,
-  process.env.HEDERA_PRIVATE_KEY
-);
-
-// Donation route
 app.post("/donate", async (req, res) => {
-  const { receiverAccountId, amount } = req.body;
+  const { receiverAccountId, amount, senderAccountId } = req.body;
+
+  if (!receiverAccountId || !amount || !senderAccountId) {
+    return res.status(400).send({
+      error: "Sender account ID, receiver account ID, and amount are required.",
+    });
+  }
+
   try {
+    // Fetch the user from the database using the senderAccountId
+    const user = await User.findOne({
+      where: { hederaAccountId: senderAccountId },
+    });
+
+    if (!user) {
+      return res.status(400).send({ error: "Sender account not found." });
+    }
+
+    // Initialize the client with the correct sender's account ID and private key
+    const client = Client.forTestnet();
+    client.setOperator(
+      senderAccountId,
+      PrivateKey.fromString(user.hederaPrivateKey)
+    );
+
     const transaction = new TransferTransaction()
-      .addHbarTransfer(process.env.HEDERA_ACCOUNT_ID, new Hbar(-amount))
-      .addHbarTransfer(receiverAccountId, new Hbar(amount));
+      .addHbarTransfer(senderAccountId, new Hbar(-amount)) // Sender
+      .addHbarTransfer(receiverAccountId, new Hbar(amount)); // Receiver
 
     const txResponse = await transaction.execute(client);
     const receipt = await txResponse.getReceipt(client);
@@ -43,6 +66,8 @@ app.post("/donate", async (req, res) => {
     res.status(500).send({ error: error.message });
   }
 });
+
+app.use("/auth", authRoute);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
