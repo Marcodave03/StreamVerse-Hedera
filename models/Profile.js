@@ -34,7 +34,7 @@ const Profiles = db.define("profiles", {
     allowNull: true,
   },
   profile_picture: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true,
   },
 });
