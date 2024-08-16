@@ -1,62 +1,46 @@
-import dotenv from "dotenv";
 import express from "express";
-import {
-  Client,
-  PrivateKey,
-  AccountId,
-  TransferTransaction,
-  Hbar,
-} from "@hashgraph/sdk";
+import cors from "cors";
+import http from "http";
+import dotenv from "dotenv";
+import { initializeSocketIO } from "./controllers/StreamingController.js";
+
+//Migration
+import User from "./models/User.js";
+import Profiles from "./models/Profile.js";
+import Streams from "./models/Stream.js";
+import Donations from "./models/Donation.js";
+
+// Routes
+import AuthRoute from "./routes/AuthRoute.js";
+import AccountRoute from "./routes/AccountRoute.js";
+import DonationRoute from "./routes/DonationRoute.js";
+import StreamingRouter from "./routes/StreamingRoute.js";
 
 dotenv.config();
 
-const app = express();
-const port = process.env.PORT;
+//Migratenya 1 1
+User.sync();
+Profiles.sync();
+Streams.sync();
+Donations.sync();
 
+const app = express();
+const server = http.createServer(app);
+initializeSocketIO(server);
+
+app.use(cors());
 app.use(express.json());
 
-const myAccountId = process.env.HEDERA_ACCOUNT_ID;
-const myPrivateKey = process.env.HEDERA_PRIVATE_KEY;
+// Use Route with prefix
+app.use("/auth", AuthRoute);
+app.use("/account", AccountRoute);
+app.use("/stream", StreamingRouter);
+app.use("/", DonationRoute);
 
-if (!myAccountId || !myPrivateKey) {
-  throw new Error("Account ID and private key must be provided");
+const port = process.env.PORT;
+if (!port) {
+  console.error("Port is not defined in the environment variables");
+  process.exit(1);
 }
 
-const client = Client.forTestnet();
-client.setOperator(
-  AccountId.fromString(myAccountId),
-  PrivateKey.fromString(myPrivateKey)
-);
-
-app.post("/donate", async (req, res) => {
-  const { recipientAccountId, amount } = req.body;
-
-  if (!recipientAccountId || !amount) {
-    return res
-      .status(400)
-      .json({ error: "Recipient account ID and amount are required" });
-  }
-
-  try {
-    const transaction = new TransferTransaction()
-      .addHbarTransfer(myAccountId, new Hbar(-amount))
-      .addHbarTransfer(recipientAccountId, new Hbar(amount));
-
-    const txResponse = await transaction.execute(client);
-
-    const receipt = await txResponse.getReceipt(client);
-
-    res.json({
-      status: "success",
-      transactionId: txResponse.transactionId.toString(),
-      receipt,
-    });
-  } catch (error) {
-    console.error("Error processing donation:", error);
-    res.status(500).json({ error: "Failed to process donation" });
-  }
-});
-
-app.listen(port, () => {
-  console.log(`Donation server listening at http://localhost:${port}`);
-});
+server.listen(port, () => console.log(`Server running on port ${port}`));
