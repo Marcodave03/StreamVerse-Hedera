@@ -19,10 +19,10 @@ import StreamingRouter from "./routes/StreamingRoute.js";
 dotenv.config();
 
 //Migratenya 1 1
-User.sync();
-Profiles.sync();
-Streams.sync();
-Donations.sync();
+// User.sync();
+// Profiles.sync();
+// Streams.sync();
+// Donations.sync();
 
 const app = express();
 const server = http.createServer(app);
