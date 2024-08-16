@@ -10,11 +10,10 @@ if (!process.env.HEDERA_ACCOUNT_ID || !process.env.HEDERA_PRIVATE_KEY) {
   process.exit(1);
 }
 
-const myAccountId = AccountId.fromString(process.env.HEDERA_ACCOUNT_ID);
-const myPrivateKey = PrivateKey.fromString(process.env.HEDERA_PRIVATE_KEY);
-
 const client = Client.forTestnet();
-
-client.setOperator(myAccountId, myPrivateKey);
+client.setOperator(
+  process.env.HEDERA_ACCOUNT_ID,
+  process.env.HEDERA_PRIVATE_KEY
+);
 
 export default client;

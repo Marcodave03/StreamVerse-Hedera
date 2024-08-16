@@ -20,7 +20,12 @@ const Users = db.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    hedera_account_id: {
+    hederaAccountId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    hederaPrivateKey: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -30,7 +35,11 @@ const Users = db.define(
     },
   },
   {
-    freezeTableName: true,
+    hooks: {
+      beforeCreate: async (user) => {
+        user.password = await bcrypt.hash(user.password, 10);
+      },
+    },
   }
 );
 

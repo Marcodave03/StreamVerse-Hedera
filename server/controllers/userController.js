@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import Users from "../models/userModel.js";
-import donateHbar from "./hederaController.js";
+import donateHbar from "./donationController.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
 
