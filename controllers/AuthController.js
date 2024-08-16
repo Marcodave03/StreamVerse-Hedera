@@ -23,6 +23,11 @@ export const register = async (req, res) => {
     const privateKey = PrivateKey.generate();
     const publicKey = privateKey.publicKey;
 
+    client.setOperator(
+      process.env.HEDERA_ACCOUNT_ID,
+      process.env.HEDERA_PRIVATE_KEY
+    );
+
     const transactionResponse = await new AccountCreateTransaction()
       .setKey(publicKey)
       .setInitialBalance(new Hbar(100))
@@ -33,7 +38,7 @@ export const register = async (req, res) => {
 
     const user = await User.create({
       email,
-      hashPassword,
+      password: hashPassword,
       hederaAccountId,
       hederaPrivateKey: privateKey.toString(),
     });

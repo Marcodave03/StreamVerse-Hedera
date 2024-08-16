@@ -173,7 +173,7 @@ export const getRooms = (req, res) => {
 
 export const createRoom = async (req, res) => {
   try {
-    const { userId, title, stream_url } = req.body; // Assuming userId is sent in the request
+    const { userId, title, stream_url } = req.body;
     let stream = await Streams.findOne({ where: { user_id: userId } });
 
     if (stream) {
@@ -195,6 +195,7 @@ export const createRoom = async (req, res) => {
         is_live: true,
       });
 
+      //Must watch
       rooms[topicId] = {
         streamers: [],
         watchers: [],
