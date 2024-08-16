@@ -9,12 +9,14 @@ import User from "./models/User.js";
 import Profiles from "./models/Profile.js";
 import Streams from "./models/Stream.js";
 import Donations from "./models/Donation.js";
+import Follower from "./models/Follower.js";
 
 // Routes
 import AuthRoute from "./routes/AuthRoute.js";
 import AccountRoute from "./routes/AccountRoute.js";
 import DonationRoute from "./routes/DonationRoute.js";
 import StreamingRouter from "./routes/StreamingRoute.js";
+import FollowerRoute from "./routes/FollowerRoute.js";
 
 dotenv.config();
 
@@ -23,6 +25,7 @@ User.sync();
 Profiles.sync();
 Streams.sync();
 Donations.sync();
+Follower.sync();
 
 const app = express();
 const server = http.createServer(app);
@@ -36,6 +39,7 @@ app.use("/auth", AuthRoute);
 app.use("/account", AccountRoute);
 app.use("/stream", StreamingRouter);
 app.use("/", DonationRoute);
+app.use("/followers", FollowerRoute);
 
 const port = process.env.PORT;
 if (!port) {
