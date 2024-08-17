@@ -10,7 +10,18 @@ import AccountRoute from "./routes/AccountRoute.js";
 import DonationRoute from "./routes/DonationRoute.js";
 import StreamingRouter from "./routes/StreamingRoute.js";
 
+// Models
+import User from "./models/User.js";
+import Profiles from "./models/Profile.js";
+import Streams from "./models/Stream.js";
+import Donations from "./models/Donation.js";
+
 dotenv.config();
+
+// User.sync();
+// Profiles.sync();
+// Streams.sync();
+// Donations.sync();
 
 const app = express();
 const server = http.createServer(app);

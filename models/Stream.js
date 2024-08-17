@@ -18,7 +18,7 @@ const Streams = db.define("streams", {
     allowNull: false,
   },
   thumbnail: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true,
   },
   stream_url: {
@@ -29,6 +29,10 @@ const Streams = db.define("streams", {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: false,
+  },
+  topic_id: {
+    type: DataTypes.STRING,
+    allowNull: false,
   },
 });
 

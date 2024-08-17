@@ -5,7 +5,7 @@ import {
   TopicCreateTransaction,
 } from "@hashgraph/sdk";
 import dotenv from "dotenv";
-import Streams from "../models/Stream.js"; // Import the Streams model
+import Streams from "../models/Stream.js";
 
 dotenv.config();
 
@@ -23,7 +23,9 @@ try {
 }
 
 const handleJoinRoom = (socket) => (roomId, role) => {
+  console.log("Join Room", roomId);
   if (!rooms[roomId]) {
+    console.log("Dont run this shit");
     rooms[roomId] = {
       streamers: [],
       watchers: [],
@@ -50,7 +52,6 @@ const handleJoinRoom = (socket) => (roomId, role) => {
   }
 
   socket.join(roomId);
-  console.log(`User ${socket.id} joined room: ${roomId} as ${role}`);
 
   socket
     .to(roomId)
@@ -65,6 +66,10 @@ const handleOffer = (socket) => (roomId, offer) => {
 };
 
 const handleIceCandidate = (socket) => (roomId, candidate) => {
+  if (!rooms[roomId]) {
+    console.error(`Room ${roomId} not found when handling ICE candidate`);
+    return;
+  }
   if (!rooms[roomId].iceCandidates) {
     rooms[roomId].iceCandidates = [];
   }
@@ -101,17 +106,16 @@ const handleDisconnect = (socket) => (role, roomId) => {
 };
 
 export const startStream = async (req, res) => {
-  const { roomId } = req.body;
+  const { title, thumbnail, topic_id, stream_url } = req.body;
 
   try {
-    // Find the stream associated with the roomId
-    const stream = await Streams.findOne({ where: { stream_url: roomId } });
-
+    const stream = await Streams.findOne({ where: { topic_id: topic_id } });
     if (!stream) {
       return res.status(404).json({ error: "Stream not found" });
     }
-
-    // Update the stream's is_live status to true
+    stream.title = title || stream.title;
+    stream.thumbnail = thumbnail || stream.thumbnail;
+    stream.stream_url = stream_url || stream.stream_url;
     stream.is_live = true;
     await stream.save();
 
@@ -123,10 +127,10 @@ export const startStream = async (req, res) => {
 };
 
 export const stopStream = async (req, res) => {
-  const { roomId } = req.body;
+  const { topic_id } = req.body;
 
   try {
-    const stream = await Streams.findOne({ where: { stream_url: roomId } });
+    const stream = await Streams.findOne({ where: { topic_id: topic_id } });
 
     if (!stream) {
       return res.status(404).json({ error: "Stream not found" });
@@ -162,8 +166,7 @@ const handleStopStream = (socket) => async (roomId) => {
     rooms[roomId].iceCandidates = [];
     socket.to(roomId).emit("stream-stopped", socket.id);
 
-    const userId = socket.user.id;
-    const stream = await Streams.findOne({ where: { user_id: userId } });
+    const stream = await Streams.findOne({ where: { topic_id: roomId } });
     if (stream) {
       stream.is_live = false;
       await stream.save();
@@ -174,7 +177,7 @@ const handleStopStream = (socket) => async (roomId) => {
 export const initializeSocketIO = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: "http://localhost:3000",
+      origin: "http://localhost:5173",
       methods: ["GET", "POST"],
       allowedHeaders: ["my-custom-header"],
       credentials: true,
@@ -192,13 +195,13 @@ export const initializeSocketIO = (server) => {
       sendMessage(message, roomId);
       socket.to(roomId).emit("chat", message);
     });
-    socket.on("ice-candidate", (roomId, candidate) =>
-      handleIceCandidate(socket)(roomId, candidate)
-    );
+    socket.on("ice-candidate", (roomId, candidate) => {
+      handleIceCandidate(socket)(roomId, candidate);
+    });
     socket.on("disconnect", () =>
       handleDisconnect(socket, socket.role, socket.roomId)
     );
-    socket.on("stop-stream", (roomId) => handleStopStream(socket, roomId));
+    socket.on("stop-stream", (roomId) => handleStopStream(socket)(roomId));
   });
 
   return io;
@@ -209,37 +212,20 @@ export const getRooms = (req, res) => {
 };
 
 export const createRoom = async (req, res) => {
-  const { userId, title } = req.body;
+  // const { userId, title } = req.body;
 
   try {
-    let existingStream = await Streams.findOne({ where: { user_id: userId } });
+    // let existingStream = await Streams.findOne({ where: { user_id: userId } });
 
-    let topicId;
-    if (existingStream) {
-      topicId = existingStream.stream_url.split("/").pop();
+    // let topicId;
+    // topicId = existingStream.stream_url.split("/").pop();
 
-      // Update the stream information if needed
-      existingStream.title = title || existingStream.title;
-      existingStream.stream_url = topicId;
-      existingStream.is_live = false; // Set the stream status to live
-      await existingStream.save();
-    } else {
-      const transaction = await new TopicCreateTransaction()
-        .setTopicMemo("Live Streaming Room")
-        .execute(client);
-
-      const receipt = await transaction.getReceipt(client);
-      topicId = receipt.topicId.toString();
-
-      existingStream = await Streams.create({
-        user_id: userId,
-        title: title || "Untitled Stream",
-        thumbnail: null, // You can update this to handle a thumbnail if available
-        stream_url: topicId, // Use topicId in the stream_url
-        is_live: false, // Set stream status as live when created
-      });
-    }
-
+    // existingStream.title = title || existingStream.title;
+    // existingStream.stream_url = topicId;
+    // existingStream.is_live = false;
+    // await existingStream.save();
+    const topicId = req.body.topic_id;
+    console.log("Create Room", topicId);
     // Step 4: Store or update the room details in memory for streaming purposes
     rooms[topicId] = {
       streamers: [],
@@ -252,7 +238,6 @@ export const createRoom = async (req, res) => {
     res.status(201).json({
       message: `Room ${topicId} created or updated`,
       roomId: topicId,
-      streamData: existingStream, // Send back the stream data
     });
   } catch (error) {
     console.error("Error creating or updating room:", error);
@@ -282,5 +267,19 @@ export const getLiveRooms = async (req, res) => {
   } catch (error) {
     console.error("Error fetching live rooms:", error);
     res.status(500).json({ error: "Failed to fetch live rooms" });
+  }
+};
+
+export const getStream = async (req, res) => {
+  try {
+    const user_id = req.params.user_id;
+    const stream = await Streams.findOne({
+      where: { user_id },
+    });
+
+    return res.status(200).json(stream);
+  } catch (error) {
+    console.error("Error fetching stream: ", error);
+    res.status(500).json({ error: "Failed to fetch stream" });
   }
 };
