@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { AccountBalanceQuery, Client } from "@hashgraph/sdk";
 import dotenv from "dotenv";
+import Profiles from "../models/Profile.js";
 
 dotenv.config();
 
@@ -56,7 +57,67 @@ export const showUserHederaAccountId = async (req, res) => {
   }
 };
 
+export const updateProfilePicture = async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ message: "Authorization header missing" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const profile = await Profiles.findOne({
+      where: { user_id: decoded.id },
+    });
+
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+
+    const { profile_picture } = req.body;
+
+    await profile.update({ profile_picture });
+
+    res.status(200).json({ message: "Profile picture updated" });
+  } catch (error) {
+    console.error("Error updating profile picture:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ message: "Authorization header missing" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const profile = await Profiles.findOne({
+      where: { user_id: decoded.id },
+    });
+
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+
+    const { full_name, bio, gender, date_of_birth } = req.body;
+
+    await profile.update({ full_name, bio, gender, date_of_birth });
+
+    res.status(200).json({ message: "Profile updated" });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export default {
   showUserBalance,
   showUserHederaAccountId,
+  updateProfilePicture,
+  updateProfile,
 };

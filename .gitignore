@@ -2,3 +2,5 @@ node_modules
 note.txt
 .env
 request.rest
+.env
+frontend

@@ -86,8 +86,6 @@ export const login = async (req, res) => {
 export const index = (req, res) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
-  console.log("Token: ", token);
-
   if (!token) {
     return res.status(401).json({ message: "Token required" });
   }
