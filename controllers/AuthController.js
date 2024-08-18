@@ -5,10 +5,12 @@ import {
   PrivateKey,
   Client,
   AccountCreateTransaction,
+  TopicCreateTransaction,
   Hbar,
 } from "@hashgraph/sdk";
 import dotenv from "dotenv";
 import Profiles from "../models/Profile.js";
+import Streams from "../models/Stream.js";
 
 dotenv.config();
 const client = Client.forTestnet();
@@ -50,6 +52,21 @@ export const register = async (req, res) => {
     await Profiles.create({
       user_id: user.id,
       full_name: username,
+    });
+
+    const transaction = await new TopicCreateTransaction()
+      .setTopicMemo("Live Streaming Room")
+      .execute(client);
+    const topicReceipt = await transaction.getReceipt(client);
+    const topicId = topicReceipt.topicId.toString();
+
+    await Streams.create({
+      user_id: user.id,
+      title: "Untitled Stream",
+      thumbnail: null,
+      stream_url: topicId,
+      is_live: false,
+      topic_id: topicId,
     });
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
@@ -108,6 +125,17 @@ export const index = (req, res) => {
               "date_of_birth",
               "wallet_address",
               "profile_picture",
+            ],
+          },
+          {
+            model: Streams,
+            as: "stream",
+            attributes: [
+              "title",
+              "thumbnail",
+              "stream_url",
+              "is_live",
+              "topic_id",
             ],
           },
         ],
