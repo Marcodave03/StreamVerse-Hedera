@@ -9,6 +9,8 @@ import AuthRoute from "./routes/AuthRoute.js";
 import AccountRoute from "./routes/AccountRoute.js";
 import DonationRoute from "./routes/DonationRoute.js";
 import StreamingRouter from "./routes/StreamingRoute.js";
+import FollowerRoute from "./routes/FollowerRoute.js";
+import UserRoute from "./routes/UserRoute.js";
 
 dotenv.config();
 
@@ -23,6 +25,8 @@ app.use(express.json());
 app.use("/auth", AuthRoute);
 app.use("/account", AccountRoute);
 app.use("/stream", StreamingRouter);
+app.use("/follower", FollowerRoute);
+app.use("/user", UserRoute);
 app.use("/", DonationRoute);
 
 const port = process.env.PORT;
