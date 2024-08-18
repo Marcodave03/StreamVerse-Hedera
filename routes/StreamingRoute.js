@@ -8,11 +8,13 @@ import {
   stopStream,
   getStream,
   getStreamer,
+  searchStream,
 } from "../controllers/StreamingController.js";
 
 const router = express.Router();
 
 router.get("/streamer/:topic_id", getStreamer);
+router.get("/search/:search", searchStream);
 router.get("/:user_id", getStream);
 router.get("/rooms", getRooms);
 router.post("/rooms", createRoom);

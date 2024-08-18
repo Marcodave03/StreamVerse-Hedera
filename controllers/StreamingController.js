@@ -7,6 +7,8 @@ import {
 import dotenv from "dotenv";
 import Streams from "../models/Stream.js";
 import User from "../models/User.js";
+import Profile from "../models/Profile.js";
+import { Op, Sequelize } from "sequelize";
 
 dotenv.config();
 
@@ -288,6 +290,9 @@ export const getStreamer = async (req, res) => {
       where: { topic_id },
       include: "user",
     });
+    if (!streamer) {
+      return res.status(404).json({ error: "Streamer not found" });
+    }
     console.log(`Streamer: ${streamer}`);
     const userProfile = await User.findOne({
       where: { id: streamer.user_id },
@@ -297,5 +302,45 @@ export const getStreamer = async (req, res) => {
   } catch (error) {
     console.log("Error fetching streamer: ", error);
     res.status(500).json({ error: "Failed to fetch streamer" });
+  }
+};
+
+export const searchStream = async (req, res) => {
+  try {
+    const search = req.params.search;
+    const streams = await Streams.findAll({
+      where: {
+        title: {
+          [Op.like]: `%${search}%`,
+        },
+      },
+      include: [
+        {
+          model: User,
+          as: "user",
+          include: [
+            {
+              model: Profile,
+              as: "profile",
+              attributes: [],
+            },
+          ],
+          attributes: [],
+        },
+      ],
+      attributes: {
+        include: [
+          [Sequelize.col("user.profile.full_name"), "full_name"],
+          [Sequelize.col("user.profile.profile_picture"), "profile_picture"],
+        ],
+      },
+      raw: true,
+      nest: true,
+    });
+
+    return res.status(200).json(streams);
+  } catch (error) {
+    console.error("Error searching stream: ", error);
+    res.status(500).json({ error: "Failed to search stream" });
   }
 };
