@@ -10,12 +10,7 @@ import AccountRoute from "./routes/AccountRoute.js";
 import DonationRoute from "./routes/DonationRoute.js";
 import StreamingRouter from "./routes/StreamingRoute.js";
 import FollowerRoute from "./routes/FollowerRoute.js";
-
-// Models
-import User from "./models/User.js";
-import Profiles from "./models/Profile.js";
-import Streams from "./models/Stream.js";
-import Donations from "./models/Donation.js";
+import UserRoute from "./routes/UserRoute.js";
 
 dotenv.config();
 
@@ -35,6 +30,8 @@ app.use(express.json());
 app.use("/auth", AuthRoute);
 app.use("/account", AccountRoute);
 app.use("/stream", StreamingRouter);
+app.use("/follower", FollowerRoute);
+app.use("/user", UserRoute);
 app.use("/", DonationRoute);
 app.use("/followers", FollowerRoute);
 

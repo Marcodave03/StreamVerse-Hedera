@@ -8,7 +8,7 @@ const Follower = db.define(
     following_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      primaryKey:true,
+      primaryKey: true,
       references: {
         model: User,
         key: "id",
@@ -19,7 +19,7 @@ const Follower = db.define(
     follower_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      primaryKey:true,
+      primaryKey: true,
       references: {
         model: User,
         key: "id",
@@ -34,21 +34,20 @@ const Follower = db.define(
 );
 
 User.hasMany(Follower, {
-    foreignKey: "following_id",
-    as: "Following",
-  });
+  foreignKey: "following_id",
+  as: "Following",
+});
 User.hasMany(Follower, {
-    foreignKey: "follower_id",
-    as: "Followed",
-  });
+  foreignKey: "follower_id",
+  as: "Followed",
+});
 Follower.belongsTo(User, {
-    foreignKey: "following_id",
-    as: "Following",
-  });
+  foreignKey: "following_id",
+  as: "Following",
+});
 Follower.belongsTo(User, {
-    foreignKey: "follower_id",
-    as: "Followed",
-  });
-  
+  foreignKey: "follower_id",
+  as: "Followed",
+});
 
 export default Follower;
