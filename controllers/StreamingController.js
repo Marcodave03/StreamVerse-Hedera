@@ -6,6 +6,7 @@ import {
 } from "@hashgraph/sdk";
 import dotenv from "dotenv";
 import Streams from "../models/Stream.js";
+import User from "../models/User.js";
 
 dotenv.config();
 
@@ -52,7 +53,6 @@ const handleJoinRoom = (socket) => (roomId, role) => {
   }
 
   socket.join(roomId);
-
   socket
     .to(roomId)
     .emit("user-connected", { id: socket.id, role, roomid: roomId });
@@ -226,7 +226,6 @@ export const createRoom = async (req, res) => {
     // await existingStream.save();
     const topicId = req.body.topic_id;
     console.log("Create Room", topicId);
-    // Step 4: Store or update the room details in memory for streaming purposes
     rooms[topicId] = {
       streamers: [],
       watchers: [],
@@ -234,7 +233,6 @@ export const createRoom = async (req, res) => {
       iceCandidates: [],
     };
 
-    // Step 5: Return the response to the client
     res.status(201).json({
       message: `Room ${topicId} created or updated`,
       roomId: topicId,
@@ -255,10 +253,9 @@ export const joinRoom = (req, res) => {
 
 export const getLiveRooms = async (req, res) => {
   try {
-    // Fetch only the streams that are live
     const liveStreams = await Streams.findAll({
       where: { is_live: true },
-      attributes: ["stream_url"], // Only return the stream_url
+      attributes: ["stream_url"],
     });
 
     const liveRooms = liveStreams.map((stream) => stream.stream_url);
@@ -281,5 +278,24 @@ export const getStream = async (req, res) => {
   } catch (error) {
     console.error("Error fetching stream: ", error);
     res.status(500).json({ error: "Failed to fetch stream" });
+  }
+};
+
+export const getStreamer = async (req, res) => {
+  try {
+    const topic_id = req.params.topic_id;
+    const streamer = await Streams.findOne({
+      where: { topic_id },
+      include: "user",
+    });
+    console.log(`Streamer: ${streamer}`);
+    const userProfile = await User.findOne({
+      where: { id: streamer.user_id },
+      include: "profile",
+    });
+    return res.status(200).json({ streamer, userProfile });
+  } catch (error) {
+    console.log("Error fetching streamer: ", error);
+    res.status(500).json({ error: "Failed to fetch streamer" });
   }
 };
