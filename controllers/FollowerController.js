@@ -4,8 +4,8 @@ import Profiles from "../models/Profile.js";
 
 export const followUser = async (req, res) => {
   try {
-    const { userId } = req.params; // This is the follower's ID
-    const { followingId } = req.body; // This should be the ID of the user being followed
+    const { userId } = req.params;
+    const { followingId } = req.body;
 
     if (!userId || !followingId) {
       return res.status(400).json({ error: "Missing user ID or following ID" });
