@@ -31,13 +31,12 @@ initializeSocketIO(server);
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "http://localhost:5173",
     credentials: true,
   })
 );
 app.use(express.json());
 
-// Use Route with prefix
 app.use("/auth", AuthRoute);
 app.use("/account", AccountRoute);
 app.use("/stream", StreamingRouter);

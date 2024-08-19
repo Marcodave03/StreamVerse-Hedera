@@ -86,7 +86,6 @@ export const updateProfilePicture = async (req, res) => {
   }
 };
 
-
 export const updateProfile = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;

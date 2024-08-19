@@ -5,7 +5,7 @@ import Donations from "../models/Donation.js";
 
 export const donateToStreamer = async (req, res) => {
   const { amount, senderAccountId, streamId } = req.body;
-
+  console.log(amount, senderAccountId, streamId);
   if (!amount || !senderAccountId || !streamId) {
     return res.status(400).send({
       error: "Sender account ID, amount, and stream ID are required.",
@@ -70,14 +70,13 @@ export const donateToStreamer = async (req, res) => {
 
 export const getReceiverAccountId = async (req, res) => {
   const { roomId } = req.params; // Get the roomId (streamId) from the request parameters
-
   try {
     // Find the stream based on the stream_url (which is the roomId)
     const stream = await Streams.findOne({
-      where: { stream_url: roomId },
+      where: { topic_id: roomId },
       include: [{ model: User, as: "user" }], // Include the user associated with the stream
     });
-
+    
     if (!stream) {
       return res.status(404).json({ error: "Stream not found." });
     }
