@@ -1,6 +1,7 @@
 import Follower from "../models/Follower.js";
 import User from "../models/User.js";
 import Profiles from "../models/Profile.js";
+import Streams from "../models/Stream.js";
 
 export const followUser = async (req, res) => {
   try {
@@ -106,7 +107,12 @@ export const getUserFollowing = async (req, res) => {
             {
               model: Profiles,
               as: "profile",
-              attributes: ["full_name"],
+              attributes: ["full_name", "profile_picture"],
+            },
+            {
+              model: Streams,
+              as: "stream",
+              attributes: ["is_live", "topic_id"],
             },
           ],
         },
@@ -116,6 +122,9 @@ export const getUserFollowing = async (req, res) => {
     const followingList = following.map((followingUser) => ({
       followingId: followingUser.following_id,
       fullName: followingUser.Following.profile.full_name,
+      isLive: followingUser.Following.stream.is_live,
+      topicId: followingUser.Following.stream.topic_id,
+      profilePicture: followingUser.Following.profile.profile_picture,
     }));
 
     res.status(200).json(followingList);

@@ -195,8 +195,8 @@ export const initializeSocketIO = (server) => {
       socket.to(roomId).emit("answer", answer);
     });
     socket.on("chat", (roomId, message) => {
-      console.log(`Received chat message: ${message} from ${roomId}`);
-      sendMessage(message, roomId);
+      console.log(`Received chat message: ${message.content}`);
+      sendMessage(message.content, roomId);
       socket.to(roomId).emit("chat", message);
     });
     socket.on("ice-candidate", (roomId, candidate) => {
