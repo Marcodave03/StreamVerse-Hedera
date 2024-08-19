@@ -11,6 +11,7 @@ import {
 import dotenv from "dotenv";
 import Profiles from "../models/Profile.js";
 import Streams from "../models/Stream.js";
+import Follower from "../models/Follower.js";
 
 dotenv.config();
 const client = Client.forTestnet();
@@ -106,13 +107,14 @@ export const index = (req, res) => {
   if (!token) {
     return res.status(401).json({ message: "Token required" });
   }
-
+  let id = 0;
   jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
     if (err) {
       return res.status(401).json({ message: "Invalid token" });
     }
 
     try {
+      id = decoded.id;
       const user = await User.findByPk(decoded.id, {
         include: [
           {
@@ -145,6 +147,12 @@ export const index = (req, res) => {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      const followerCount = await Follower.count({
+        where: { following_id: id },
+      });
+
+      user.dataValues.followerCount = followerCount;
 
       res.status(200).json(user);
     } catch (error) {
