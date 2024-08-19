@@ -8,8 +8,8 @@ import {
 
 const router = express.Router();
 
-router.post("/follow", followUser);
-router.post("/unfollow", unfollowUser);
+router.post("/:userId/follow", followUser);
+router.post("/:userId/unfollow", unfollowUser);
 router.get("/:userId/followers", getUserFollowers);
 router.get("/:userId/following", getUserFollowing);
 

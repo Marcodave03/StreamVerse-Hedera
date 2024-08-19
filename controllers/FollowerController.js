@@ -1,159 +1,125 @@
 import Follower from "../models/Follower.js";
 import User from "../models/User.js";
-import Profiles from "../models/Profile.js"; // Import Profiles model
+import Profiles from "../models/Profile.js";
 
-// Follow a user
 export const followUser = async (req, res) => {
-  const { follower_id, following_id } = req.body;
-
-  console.log("follower_id:", follower_id); // Debugging log
-  console.log("following_id:", following_id); // Debugging log
-
   try {
-    if (!follower_id || !following_id) {
+    const { userId } = req.params; // This is the follower's ID
+    const { followingId } = req.body; // This should be the ID of the user being followed
+
+    if (!userId || !followingId) {
+      return res.status(400).json({ error: "Missing user ID or following ID" });
+    }
+
+    if (userId === followingId) {
+      return res.status(400).json({ error: "You cannot follow yourself" });
+    }
+
+    const followExists = await Follower.findOne({
+      where: { follower_id: userId, following_id: followingId },
+    });
+
+    if (followExists) {
       return res
         .status(400)
-        .json({ message: "Follower ID or Following ID is missing." });
+        .json({ error: "You are already following this user" });
     }
 
-    const existingFollow = await Follower.findOne({
-      where: {
-        follower_id,
-        following_id,
-      },
+    const newFollow = await Follower.create({
+      follower_id: userId,
+      following_id: followingId,
     });
 
-    if (existingFollow) {
-      return res.status(400).json({ message: "Already following this user." });
-    }
-
-    const follow = await Follower.create({
-      follower_id,
-      following_id,
-    });
-
-    res.status(201).json(follow);
+    res
+      .status(201)
+      .json({ message: "Successfully followed the user", newFollow });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error in followUser controller:", error);
+    res.status(500).json({ error: "Failed to follow user" });
   }
 };
 
-// Unfollow a user
 export const unfollowUser = async (req, res) => {
-  const { follower_id, following_id } = req.body;
-
-  console.log("follower_id:", follower_id); // Debugging log
-  console.log("following_id:", following_id); // Debugging log
-
   try {
-    if (!follower_id || !following_id) {
-      return res
-        .status(400)
-        .json({ message: "Follower ID or Following ID is missing." });
-    }
+    const { userId } = req.params;
+    const { followingId } = req.body;
 
-    const follow = await Follower.findOne({
-      where: {
-        follower_id,
-        following_id,
-      },
+    const followExists = await Follower.findOne({
+      where: { follower_id: userId, following_id: followingId },
     });
 
-    if (!follow) {
-      return res
-        .status(404)
-        .json({ message: "You are not following this user." });
+    if (!followExists) {
+      return res.status(400).json({ error: "You are not following this user" });
     }
 
-    await follow.destroy();
-    res.status(200).json({ message: "Unfollowed successfully." });
+    await Follower.destroy({
+      where: { follower_id: userId, following_id: followingId },
+    });
+
+    res.status(200).json({ message: "Successfully unfollowed the user" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: "Failed to unfollow user" });
   }
 };
 
-// Get a user's followers
 export const getUserFollowers = async (req, res) => {
-  const { user_id } = req.params;
-
-  console.log("user_id:", user_id); // Debugging log
-
   try {
-    if (!user_id) {
-      return res.status(400).json({ message: "User ID is missing." });
-    }
-
+    const { userId } = req.params;
     const followers = await Follower.findAll({
-      where: {
-        following_id: user_id,
-      },
+      where: { following_id: userId },
       include: [
         {
           model: User,
-          as: "follower",
-          attributes: ["id", "email"],
+          as: "Followed",
           include: [
             {
               model: Profiles,
               as: "profile",
-              attributes: ["full_name"], // Use full_name instead of username
+              attributes: ["full_name"],
             },
           ],
         },
       ],
     });
 
-    res.status(200).json(
-      followers.map((f) => ({
-        user_id: f.follower.id,
-        email: f.follower.email,
-        full_name: f.follower.profile.full_name, // Return full_name
-      }))
-    );
+    const followerList = followers.map((follower) => ({
+      followerId: follower.follower_id,
+      fullName: follower.Followed.profile.full_name,
+    }));
+
+    res.status(200).json(followerList);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: "Failed to retrieve followers" });
   }
 };
 
-// Get a user's following
 export const getUserFollowing = async (req, res) => {
-  const { user_id } = req.params;
-
-  console.log("user_id:", user_id); // Debugging log
-
   try {
-    if (!user_id) {
-      return res.status(400).json({ message: "User ID is missing." });
-    }
-
+    const { userId } = req.params;
     const following = await Follower.findAll({
-      where: {
-        follower_id: user_id,
-      },
+      where: { follower_id: userId },
       include: [
         {
           model: User,
-          as: "following",
-          attributes: ["id", "email"],
+          as: "Following",
           include: [
             {
               model: Profiles,
               as: "profile",
-              attributes: ["full_name"], // Use full_name instead of username
+              attributes: ["full_name"],
             },
           ],
         },
       ],
     });
 
-    res.status(200).json(
-      following.map((f) => ({
-        user_id: f.following.id,
-        email: f.following.email,
-        full_name: f.following.profile.full_name, // Return full_name
-      }))
-    );
+    const followingList = following.map((followingUser) => ({
+      followingId: followingUser.following_id,
+      fullName: followingUser.Following.profile.full_name,
+    }));
+
+    res.status(200).json(followingList);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: "Failed to retrieve following" });
   }
 };
