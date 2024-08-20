@@ -22,7 +22,7 @@ export const showUserBalance = async (req, res) => {
       .setAccountId(user.hederaAccountId)
       .execute(client);
 
-    res.status(200).json({ balance: accountBalance.hbars.toTinybars() });
+    res.status(200).json({ balance: accountBalance.hbars.toString() });
   } catch (error) {
     console.error("Error fetching balance:", error);
     res.status(500).json({ error: error.message });
@@ -115,9 +115,36 @@ export const updateProfile = async (req, res) => {
   }
 };
 
+export const showUserName = async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ message: "Authorization header missing" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const profile = await Profiles.findOne({
+      where: { user_id: decoded.id },
+      attributes: ["full_name"], // Only fetch the full name
+    });
+
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+
+    res.status(200).json({ full_name: profile.full_name });
+  } catch (error) {
+    console.error("Error fetching user name:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export default {
   showUserBalance,
   showUserHederaAccountId,
   updateProfilePicture,
   updateProfile,
+  showUserName,
 };

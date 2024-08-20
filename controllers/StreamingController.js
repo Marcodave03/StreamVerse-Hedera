@@ -5,10 +5,12 @@ import {
   TopicCreateTransaction,
 } from "@hashgraph/sdk";
 import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
 import Streams from "../models/Stream.js";
 import User from "../models/User.js";
 import Profile from "../models/Profile.js";
 import { Op, Sequelize } from "sequelize";
+import Follower from "../models/Follower.js";
 
 dotenv.config();
 
@@ -193,8 +195,8 @@ export const initializeSocketIO = (server) => {
       socket.to(roomId).emit("answer", answer);
     });
     socket.on("chat", (roomId, message) => {
-      console.log(`Received chat message: ${message} from ${roomId}`);
-      sendMessage(message, roomId);
+      console.log(`Received chat message: ${message.content}`);
+      sendMessage(message.content, roomId);
       socket.to(roomId).emit("chat", message);
     });
     socket.on("ice-candidate", (roomId, candidate) => {
@@ -286,19 +288,48 @@ export const getStream = async (req, res) => {
 export const getStreamer = async (req, res) => {
   try {
     const topic_id = req.params.topic_id;
+    const authorizationHeader = req.headers.authorization;
+
+    if (!authorizationHeader) {
+      return res.status(401).json({ error: "Authorization token is required" });
+    }
+
+    const token = authorizationHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const currentUserId = decoded.id;
+
     const streamer = await Streams.findOne({
       where: { topic_id },
       include: "user",
     });
+
     if (!streamer) {
       return res.status(404).json({ error: "Streamer not found" });
     }
+
     console.log(`Streamer: ${streamer}`);
+
     const userProfile = await User.findOne({
       where: { id: streamer.user_id },
-      include: "profile",
+      include: ["profile"],
     });
-    return res.status(200).json({ streamer, userProfile });
+
+    const followerCount = await Follower.count({
+      where: { following_id: streamer.user_id },
+    });
+
+    userProfile.dataValues.followerCount = followerCount;
+
+    const isFollowing = await Follower.findOne({
+      where: {
+        follower_id: currentUserId,
+        following_id: streamer.user_id,
+      },
+    });
+
+    const is_followed = !!isFollowing;
+
+    return res.status(200).json({ streamer, userProfile, is_followed });
   } catch (error) {
     console.log("Error fetching streamer: ", error);
     res.status(500).json({ error: "Failed to fetch streamer" });
@@ -342,5 +373,39 @@ export const searchStream = async (req, res) => {
   } catch (error) {
     console.error("Error searching stream: ", error);
     res.status(500).json({ error: "Failed to search stream" });
+  }
+};
+
+// controllers/StreamingController.js
+export const getAllStreams = async (req, res) => {
+  try {
+    // Find all streams
+    const streams = await Streams.findAll({
+      include: [
+        {
+          model: User,
+          as: 'user',
+          include: [
+            {
+              model: Profile,
+              as: 'profile',
+              attributes: ['full_name', 'profile_picture'], // Include profile attributes
+            },
+          ],
+          attributes: ['email', 'hederaAccountId', 'hederaPrivateKey'], // Include user attributes
+        },
+      ],
+      attributes: [
+        'user_id', 'title', 'thumbnail', 'stream_url', 'is_live', 'topic_id' // Include stream attributes
+      ],
+      raw: true,
+      nest: true,
+    });
+
+    // Return the retrieved streams
+    return res.status(200).json(streams);
+  } catch (error) {
+    console.error('Error fetching streams: ', error);
+    res.status(500).json({ error: 'Failed to fetch streams' });
   }
 };
