@@ -17,6 +17,7 @@ import User from "./models/User.js";
 import Profiles from "./models/Profile.js";
 import Streams from "./models/Stream.js";
 import Donations from "./models/Donation.js";
+import Follower from "./models/Follower.js";
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ dotenv.config();
 // Profiles.sync();
 // Streams.sync();
 // Donations.sync();
+// Follower.sync()
 
 const app = express();
 const server = http.createServer(app);

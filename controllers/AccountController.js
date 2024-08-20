@@ -22,7 +22,7 @@ export const showUserBalance = async (req, res) => {
       .setAccountId(user.hederaAccountId)
       .execute(client);
 
-    res.status(200).json({ balance: accountBalance.hbars.toTinybars() });
+    res.status(200).json({ balance: accountBalance.hbars.toString() });
   } catch (error) {
     console.error("Error fetching balance:", error);
     res.status(500).json({ error: error.message });
