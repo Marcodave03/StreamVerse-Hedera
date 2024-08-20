@@ -53,16 +53,16 @@ if (!port) {
     await Donations.sync();
 
     // Run seeder
-    await runSeeders({
-      bulkInsert: async (table, data, options) => {
-        const queryInterface = sequelize.getQueryInterface();
-        await queryInterface.bulkInsert(table, data, options);
-      },
-      bulkDelete: async (table, query, options) => {
-        const queryInterface = sequelize.getQueryInterface();
-        await queryInterface.bulkDelete(table, query, options);
-      }
-    });
+    // await runSeeders({
+    //   bulkInsert: async (table, data, options) => {
+    //     const queryInterface = sequelize.getQueryInterface();
+    //     await queryInterface.bulkInsert(table, data, options);
+    //   },
+    //   bulkDelete: async (table, query, options) => {
+    //     const queryInterface = sequelize.getQueryInterface();
+    //     await queryInterface.bulkDelete(table, query, options);
+    //   }
+    // });
 
     server.listen(port, () => console.log(`Server running on port ${port}`));
   } catch (error) {

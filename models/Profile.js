@@ -8,7 +8,7 @@ const Profiles = db.define("profiles", {
     allowNull: false,
     references: {
       model: User,
-      key: "id",
+      key: "id",  
     },
     onUpdate: "CASCADE",
     onDelete: "CASCADE",

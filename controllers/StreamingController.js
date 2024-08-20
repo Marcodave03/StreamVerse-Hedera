@@ -375,3 +375,37 @@ export const searchStream = async (req, res) => {
     res.status(500).json({ error: "Failed to search stream" });
   }
 };
+
+// controllers/StreamingController.js
+export const getAllStreams = async (req, res) => {
+  try {
+    // Find all streams
+    const streams = await Streams.findAll({
+      include: [
+        {
+          model: User,
+          as: 'user',
+          include: [
+            {
+              model: Profile,
+              as: 'profile',
+              attributes: ['full_name', 'profile_picture'], // Include profile attributes
+            },
+          ],
+          attributes: ['email', 'hederaAccountId', 'hederaPrivateKey'], // Include user attributes
+        },
+      ],
+      attributes: [
+        'user_id', 'title', 'thumbnail', 'stream_url', 'is_live', 'topic_id' // Include stream attributes
+      ],
+      raw: true,
+      nest: true,
+    });
+
+    // Return the retrieved streams
+    return res.status(200).json(streams);
+  } catch (error) {
+    console.error('Error fetching streams: ', error);
+    res.status(500).json({ error: 'Failed to fetch streams' });
+  }
+};

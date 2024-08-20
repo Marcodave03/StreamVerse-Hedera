@@ -9,6 +9,7 @@ import {
   getStream,
   getStreamer,
   searchStream,
+  getAllStreams,
 } from "../controllers/StreamingController.js";
 
 const router = express.Router();
@@ -22,5 +23,7 @@ router.post("/join-room", joinRoom);
 router.get("/live-rooms", getLiveRooms);
 router.patch("/start-stream", startStream);
 router.post("/stop-stream", stopStream);
+router.get("/allstream",getAllStreams);
+
 
 export default router;
