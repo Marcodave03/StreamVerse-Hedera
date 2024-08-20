@@ -23,7 +23,6 @@ router.post("/join-room", joinRoom);
 router.get("/live-rooms", getLiveRooms);
 router.patch("/start-stream", startStream);
 router.post("/stop-stream", stopStream);
-router.get("/allstream",getAllStreams);
-
+router.get("/", getAllStreams);
 
 export default router;

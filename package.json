@@ -4,6 +4,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "build": "echo \"No build step needed\"",
     "start": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
