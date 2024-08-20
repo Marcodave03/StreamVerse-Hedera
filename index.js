@@ -3,6 +3,7 @@ import cors from "cors";
 import http from "http";
 import dotenv from "dotenv";
 import { initializeSocketIO } from "./controllers/StreamingController.js";
+import sequelize from "./config/Database.js";
 
 // Routes
 import AuthRoute from "./routes/AuthRoute.js";
@@ -17,27 +18,17 @@ import User from "./models/User.js";
 import Profiles from "./models/Profile.js";
 import Streams from "./models/Stream.js";
 import Donations from "./models/Donation.js";
-import Follower from "./models/Follower.js";
+
+// Seeder
+import { up as runSeeders } from "./seeders/users-profiles.js";
 
 dotenv.config();
-
-// User.sync();
-// Profiles.sync();
-// Streams.sync();
-// Donations.sync();
-// Follower.sync()
 
 const app = express();
 const server = http.createServer(app);
 initializeSocketIO(server);
 
-// app.use(
-//   cors({
-//     origin: "http://localhost:5173",
-//     credentials: true,
-//   })
-// );
-app.use(cors())
+app.use(cors());
 app.use(express.json());
 
 app.use("/auth", AuthRoute);
@@ -53,4 +44,29 @@ if (!port) {
   process.exit(1);
 }
 
-server.listen(port, () => console.log(`Server running on port ${port}`));
+(async () => {
+  try {
+    // Sync models
+    await User.sync();
+    await Profiles.sync();
+    await Streams.sync();
+    await Donations.sync();
+
+    // Run seeder
+    await runSeeders({
+      bulkInsert: async (table, data, options) => {
+        const queryInterface = sequelize.getQueryInterface();
+        await queryInterface.bulkInsert(table, data, options);
+      },
+      bulkDelete: async (table, query, options) => {
+        const queryInterface = sequelize.getQueryInterface();
+        await queryInterface.bulkDelete(table, query, options);
+      }
+    });
+
+    server.listen(port, () => console.log(`Server running on port ${port}`));
+  } catch (error) {
+    console.error("Error starting server or seeding database:", error);
+    process.exit(1);
+  }
+})();
