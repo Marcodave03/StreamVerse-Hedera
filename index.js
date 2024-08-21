@@ -18,6 +18,7 @@ import User from "./models/User.js";
 import Profiles from "./models/Profile.js";
 import Streams from "./models/Stream.js";
 import Donations from "./models/Donation.js";
+import Followers from "./models/Follower.js";
 
 // Seeder
 import { up as runSeeders } from "./seeders/users-profiles.js";
@@ -51,6 +52,7 @@ if (!port) {
     await Profiles.sync();
     await Streams.sync();
     await Donations.sync();
+    await Followers.sync();
 
     // Run seeder
     // await runSeeders({
